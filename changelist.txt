@@ -25,7 +25,7 @@ también se puede manipular en el main. Con hacer el multilínea es suficiente.
     ;;
 
 1.2 [HECHO] se aplica lo mismo que de arriba. solucion rapida y sencilla. se puede redireccionar la entrada estándar.
-que pare nada más pete, para no perder tiempo.
+que pare nada más pete, para no perder tiempo. Para usarlo se hace ./top archivo
 
     (*This function reads the file that we input in the command line, and does essentialy the same as
     read_input. The only difference is that this one reads from the input channel of a file, and also

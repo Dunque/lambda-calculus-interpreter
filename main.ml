@@ -103,6 +103,7 @@ let top_level_loop () =
     loop emptyctx
   ;;
 
+(*This checks if a filename was given or not, and it calls the right loop function*)
 if (Array.length Sys.argv >= 2) then
   file_loop ()
 else
