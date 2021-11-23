@@ -1,0 +1,56 @@
+[*] -> obligatorio
+
+1.1 [*] [HECHO] añadir un separador ;; por ejeplo. tocar el analizador sintático y léxico
+también se puede manipular en el main. Con hacer el multilínea es suficiente.
+
+    (*Simple function that uses regex to check if a string contains any given expression.
+    In our case, we will only use this to check if a string contains the stop character ;*)
+    let has_char str c =
+    try match (Str.search_forward (Str.regexp c) str 0) with _-> true  
+        with Not_found -> false
+    ;;
+
+    (*This function reads the console input, concatenating each line (string) it reads with
+    a space in between each, and it only stops when it finds a ;. The remaining input to the
+    right of the ; gets ignored.*)
+    let read_input () =
+    let rec aux acc =
+        let line = read_line () in
+        if (has_char line ";") then 
+        let split_line = (hd (split_on_char ';' line)) in 
+            cat acc (cat " " split_line)
+        else 
+        aux (cat acc (cat " " line))
+    in aux ""
+    ;;
+
+1.2 se aplica lo mismo que de arriba. solucion rapida y sencilla. se puede redireccionar la entrada estándar.
+que pare nada más pete, para no perder tiempo.
+
+1.3 minimizar paréntesis. estudiar la gramática, hacer cascadas de funciones que se 
+llaman unas a otras, van entrando en la estructura del término y segun dodne estén 
+deciden si es necesario paréntesis o no
+
+2.1 modo debug, activable con un comando o una opción. dentro de la iteracion de eval, 
+antes de volver a llamar, printeas lo que te dio
+
+2.2 cambia los nombres por números. hay que guardar un mapa o una lista de los nombres originales de las 
+varaiables, para que traduzca de vuelta al final
+
+3.1 [*] a parte de la recursividad, podemos hacer definiciones recursivas directas con esa sintaxis
+
+3.2 [*] elegir si se pueden squashear tipos o si no se puede hacer. si hacemos x = 5
+luego no podemos hacer x = true. elegimos si si o si no se puede hacer.
+
+3.3 [*] nuevo tipo string
+
+3.4 [*] incorporar pares, el constructor es la , y los ponemos entre {first,second}
+
+3.5 se pueden hacer lpos pares en base a los registros, pero ni idea sinceramente. pueden ser distintos tipos
+
+3.6 tienen que ser del mismo tipo los elementos
+
+3.7 subtipado. bastante chungo, pero más facil qeu el pretty printer y el de brujin
+
+4.1 [*] la memoria: solo hay que documentar lo nuevo que hagamos, un parrafo sirve, algun ejemplo.
+no más de 3,4 páginas. El manual técnico se puede sustituír por comentarios en el código.
