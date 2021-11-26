@@ -5,6 +5,7 @@ type ty =
     TyBool
   | TyNat
   | TyArr of ty * ty
+  | TyStr
 ;;
 
 type context =
@@ -24,6 +25,8 @@ type term =
   | TmApp of term * term
   | TmLetIn of string * term * term
   | TmFix of term
+  | TmStr of string
+  | TmConcat of term * term
 ;;
 
 
@@ -51,6 +54,8 @@ let rec string_of_ty ty = match ty with
       "Nat"
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
+  | TyStr ->
+    "String"
 ;;
 
 exception Type_error of string
@@ -120,7 +125,7 @@ let rec typeof ctx tm = match tm with
       let ctx' = addbinding ctx x tyT1 in
       typeof ctx' t2
 
-      (* T-Fix *)
+    (* T-Fix *)
   | TmFix t1 ->
       let tyT1 = typeof ctx t1 in
       (match tyT1 with
@@ -128,6 +133,17 @@ let rec typeof ctx tm = match tm with
             if tyT11 = tyT12 then tyT12
             else raise (Type_error "result of body not compatible with domain")
           | _ -> raise (Type_error "arrow type expected"))
+
+  | TmStr _ ->
+      TyStr
+  
+  | TmConcat (t1,t2) ->
+      let tyT1 = typeof ctx t1 in
+      let tyT2 = typeof ctx t2 in
+      (match (tyT1,tyT2) with
+          (TyStr,TyStr) -> TyStr
+        | _ -> raise (Type_error "arguments must be strings"))
+
 ;;
 
 
@@ -164,6 +180,10 @@ let rec string_of_term = function
       "let " ^ s ^ " = " ^ string_of_term t1 ^ " in " ^ string_of_term t2
   | TmFix t ->
       "(fix " ^ string_of_term t ^ ")"
+  | TmStr s ->
+      s
+  | TmConcat (t1,t2) ->
+      string_of_term t1 ^ string_of_term t2
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -201,6 +221,10 @@ let rec free_vars tm = match tm with
       lunion (ldif (free_vars t2) [s]) (free_vars t1)
   | TmFix t ->
       free_vars t
+  | TmStr s ->
+      [s]
+  | TmConcat (t1, t2) -> 
+      [string_of_term t1 ^ string_of_term t2]
 ;;
 
 let rec fresh_name x l =
@@ -242,6 +266,10 @@ let rec subst x s tm = match tm with
                 TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
   | TmFix t ->
       TmFix (subst x s t)
+  | TmStr s ->
+      TmStr s
+  | TmConcat (t1,t2) ->
+      TmStr (string_of_term t1 ^ string_of_term t2)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -337,6 +365,11 @@ let rec eval1 tm = match tm with
   | TmFix t1 ->
       let t1' = eval1 t1 in
       TmFix t1'
+
+  | TmConcat (t1,t2) ->
+      let t1' = eval1 t1 in
+      let t2' = eval1 t2 in
+      TmStr ( string_of_term t1' ^ string_of_term t2')
 
   | _ ->
       raise NoRuleApplies

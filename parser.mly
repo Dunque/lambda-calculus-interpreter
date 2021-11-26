@@ -17,7 +17,9 @@
 %token IN
 %token BOOL
 %token NAT
+%token CONCAT
 
+%token QUOTE
 %token LPAREN
 %token RPAREN
 %token DOT
@@ -61,6 +63,8 @@ appTerm :
       { TmIsZero $2 }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
+  | CONCAT atomicTerm atomicTerm
+      { TmConcat ($2,$3) }
 
 atomicTerm :
     LPAREN term RPAREN
@@ -76,6 +80,8 @@ atomicTerm :
             0 -> TmZero
           | n -> TmSucc (f (n-1))
         in f $1 }
+  | QUOTE STRINGV QUOTE 
+      { TmStr $2 }
 
 ty :
     atomicTy
@@ -90,4 +96,6 @@ atomicTy :
       { TyBool }
   | NAT
       { TyNat }
+  | STRINGV
+      { TyStr }
 

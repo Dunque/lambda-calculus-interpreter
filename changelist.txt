@@ -124,7 +124,9 @@ varaiables, para que traduzca de vuelta al final
 3.2 [*] elegir si se pueden squashear tipos o si no se puede hacer. si hacemos x = 5
 luego no podemos hacer x = true. elegimos si si o si no se puede hacer.
 
-3.3 [*] nuevo tipo string
+3.3 [*] [HECHO] nuevo tipo string
+
+    creado como tipo base ty y a mayores añadida la operación de concat como TmConcat
 
 3.4 [*] incorporar pares, el constructor es la , y los ponemos entre {first,second}
 
