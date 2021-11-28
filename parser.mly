@@ -27,6 +27,11 @@
 %token COLON
 %token ARROW
 %token EOF
+%token COMMA
+%token LCURL
+%token RCURL
+%token FIRST
+%token SECOND
 
 %token <int> INTV
 %token <string> STRINGV
@@ -51,6 +56,14 @@ term :
       { TmLetIn ($2, $4, $6) }
   | LETREC STRINGV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix ( TmAbs ($2, $4, $6)), $8) }
+  | CONCAT term term
+      { TmConcat ($2,$3) }
+  | LCURL term COMMA term RCURL 
+      { TmPair ($2,$4) }
+  | term FIRST 
+      { TmFirst ($1) }
+  | term SECOND 
+      { TmSecond ($1) }
 
 appTerm :
     atomicTerm
@@ -63,8 +76,6 @@ appTerm :
       { TmIsZero $2 }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
-  | CONCAT atomicTerm atomicTerm
-      { TmConcat ($2,$3) }
 
 atomicTerm :
     LPAREN term RPAREN

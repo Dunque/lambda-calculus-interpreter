@@ -130,6 +130,9 @@ luego no podemos hacer x = true. elegimos si si o si no se puede hacer.
 
 3.4 [*] incorporar pares, el constructor es la , y los ponemos entre {first,second}
 
+    ya funciona, pero hay que preguntar si hay qeu hacer todas las operaciones qeu aparecen en
+    la hoja de reglas. Para hacer first y second se usa { , }.1 y .2
+
 3.5 se pueden hacer lpos pares en base a los registros, pero ni idea sinceramente. pueden ser distintos tipos
 
 3.6 tienen que ser del mismo tipo los elementos

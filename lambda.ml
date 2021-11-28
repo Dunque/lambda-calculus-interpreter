@@ -6,6 +6,7 @@ type ty =
   | TyNat
   | TyArr of ty * ty
   | TyStr
+  | TyPair of ty * ty
 ;;
 
 type context =
@@ -27,6 +28,9 @@ type term =
   | TmFix of term
   | TmStr of string
   | TmConcat of term * term
+  | TmPair of term * term
+  | TmFirst of term
+  | TmSecond of term
 ;;
 
 
@@ -56,6 +60,8 @@ let rec string_of_ty ty = match ty with
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyStr ->
     "String"
+  | TyPair (ty1, ty2) ->
+    "{" ^ string_of_ty ty1 ^ "," ^ string_of_ty ty2 ^ "}"
 ;;
 
 exception Type_error of string
@@ -144,6 +150,25 @@ let rec typeof ctx tm = match tm with
           (TyStr,TyStr) -> TyStr
         | _ -> raise (Type_error "arguments must be strings"))
 
+  | TmPair (t1,t2) ->
+    let tyT1 = typeof ctx t1 in
+    let tyT2 = typeof ctx t2 in
+      TyPair (tyT1,tyT2)
+
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) -> 
+          let tyT1 = typeof ctx t1 in
+          tyT1
+        | _ -> raise (Type_error "argument of first must be a tuple"))
+
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) -> 
+          let tyT1 = typeof ctx t2 in
+          tyT1
+        | _ -> raise (Type_error "argument of second must be a tuple"))
+
 ;;
 
 
@@ -184,6 +209,18 @@ let rec string_of_term = function
       s
   | TmConcat (t1,t2) ->
       string_of_term t1 ^ string_of_term t2
+  | TmPair (t1,t2) ->
+    "{" ^ string_of_term t1 ^ "," ^ string_of_term t2 ^ "}"
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) -> 
+          string_of_term t1
+          | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) -> 
+            string_of_term t2
+            | _ -> raise (Type_error "argument of second must be a tuple"))
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -225,6 +262,18 @@ let rec free_vars tm = match tm with
       [s]
   | TmConcat (t1, t2) -> 
       [string_of_term t1 ^ string_of_term t2]
+  | TmPair (t1,t2) -> 
+      lunion (free_vars t1) (free_vars t2)
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) ->
+          free_vars t1
+        | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) ->
+          free_vars t2
+        | _ -> raise (Type_error "argument of second must be a tuple"))
 ;;
 
 let rec fresh_name x l =
@@ -269,7 +318,19 @@ let rec subst x s tm = match tm with
   | TmStr s ->
       TmStr s
   | TmConcat (t1,t2) ->
-      TmStr (string_of_term t1 ^ string_of_term t2)
+      TmStr (string_of_term (subst x s t1) ^ string_of_term (subst x s t2))
+  | TmPair (t1,t2) ->
+      TmPair (subst x s t1, subst x s t2)
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) ->
+          subst x s t1
+          | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) ->
+          subst x s t2
+          | _ -> raise (Type_error "argument of second must be a tuple"))
 ;;
 
 let rec isnumericval tm = match tm with
@@ -370,6 +431,25 @@ let rec eval1 tm = match tm with
       let t1' = eval1 t1 in
       let t2' = eval1 t2 in
       TmStr ( string_of_term t1' ^ string_of_term t2')
+  
+  | TmPair (t1,t2) ->
+      let t1' = eval1 t1 in
+      let t2' = eval1 t2 in
+      TmPair (t1',t2')
+  
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) ->
+          let t1' = eval1 t1 in
+          t1'
+        | _ -> raise (Type_error "argument of second must be a tuple"))
+
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) ->
+          let t2' = eval1 t2 in
+          t2'
+          | _ -> raise (Type_error "argument of second must be a tuple"))
 
   | _ ->
       raise NoRuleApplies

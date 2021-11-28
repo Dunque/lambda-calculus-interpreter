@@ -29,6 +29,11 @@ rule token = parse
   | '='         { EQ }
   | ':'         { COLON }
   | "->"        { ARROW }
+  | ","         { COMMA }
+  | "{"         { LCURL }
+  | "}"         { RCURL }
+  | ".1"        { FIRST }
+  | ".2"        { SECOND }
   | ['0'-'9']+  { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | ['a'-'z']['a'-'z' '_' '0'-'9']*
                 { STRINGV (Lexing.lexeme lexbuf) }

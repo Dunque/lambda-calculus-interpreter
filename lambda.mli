@@ -4,6 +4,7 @@ type ty =
   | TyNat
   | TyArr of ty * ty
   | TyStr
+  | TyPair of ty * ty
 ;;
 
 type context =
@@ -25,6 +26,9 @@ type term =
   | TmFix of term
   | TmStr of string
   | TmConcat of term * term
+  | TmPair of term * term
+  | TmFirst of term
+  | TmSecond of term
 ;;
 
 val emptyctx : context;;
