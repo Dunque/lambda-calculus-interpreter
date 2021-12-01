@@ -9,6 +9,20 @@ open Lexer;;
 open String;;
 open List;;
 
+let execute ctx = function
+    Eval tm ->
+        let tyTm = typeof ctx tm in
+        let tm' = eval ctx tm in
+        print_endline (" - : " ^ string_of_ty tyTm ^ " = " ^ string_of_term tm');
+        ctx
+
+    | Bind (s, tm) ->
+        let tyTm = typeof ctx tm in
+        let tm' = eval ctx tm in
+        print_endline (" - : " ^ string_of_ty tyTm ^ " = " ^ string_of_term tm');
+        addbinding ctx s tm tyTm
+;;
+
 (*Simple function that uses regex to check if a string contains any given expression.
   In our case, we will only use this to check if a string contains the stop character ;*)
 let has_char str c =
@@ -54,10 +68,8 @@ let file_loop () =
       let rec loop ctx numLine =
         try
           let inp = read_input_from_file in_channel numLine in
-          let tm = s token (from_string (fst inp)) in
-          let tyTm = typeof ctx tm in
-          print_endline (string_of_term (eval tm) ^ " : " ^ string_of_ty tyTm);
-          loop ctx (snd inp)
+          let c = s token (from_string (fst inp)) in
+          loop (execute ctx c) (snd inp)
         with
            Lexical_error ->
              print_endline ("lexical error in line: " ^ string_of_int numLine);
@@ -83,10 +95,8 @@ let top_level_loop () =
     print_string ">> ";
     flush stdout;
     try
-      let tm = s token (from_string (read_input ())) in
-      let tyTm = typeof ctx tm in
-      print_endline (string_of_term (eval tm) ^ " : " ^ string_of_ty tyTm);
-      loop ctx
+      let c = s token (from_string (read_input ())) in
+      loop (execute ctx c)
     with
        Lexical_error ->
          print_endline "lexical error";

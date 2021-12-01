@@ -10,10 +10,72 @@ if iszero 3 then 0 else 1;
 iszero true;
 if 1 then true else false;
 if iszero 3 then 0 else false;
-let id = Lx.x in id 3;
+let id = L x:Nat.x in id 3;
 let id_bool = L x:Bool. x in id_bool true;
 let id_nat = L x:Nat. x in id_nat 5;
 let x = 5 in let id_nat = L x:Nat. x in id_nat x;
 let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y)) in let sumaux = lambda f. (lambda n. (lambda m. if (iszero n) then m else succ (f (pred n) m))) in let sum = fix sumaux in sum 21 34;
 let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y)) in let sumaux = lambda f. (lambda n. (lambda m. if (iszero n) then m else succ (f (pred n) m))) in let sum = fix sumaux in let prodaux = lambda f. (lambda n. (lambda m. if (iszero (pred n)) then m else sum (f (pred n) m) m)) in let prod = fix prodaux in prod 12 5;
 concat ({1,"adios"}.2) ({"hola",2}.1);
+
+
+type context = string * ty * term option
+
+type command = 
+    Eval of term
+    | Bind of string * term
+
+val addbinding : context -> string -> ty -> term -> context;;
+val getbinding : context -> string -> ty -> context;;
+
+val execute : context -> command -> context;
+
+
+
+
+let execute ctx = function
+    Eval tm ->
+        let tyTm = typeof ctx tm in
+        let tm' = eval ctx tm in
+        print_endline (" - : " ^ string_of_ty tyTM ^" = " ^ string_of_term tm');
+        ctx
+
+    | Bind (s, tm) ->
+        let tyTm = typeof ctx tm in
+        let tm' = eval ctx tm in
+        print_endline (" - : " ^ string_of_ty tyTM ^" = " ^ string_of_term tm');
+        addbinding ctx s tm tytm
+
+TmVar s -> 
+    getbinding ctx s
+
+
+
+main
+
+let c = s token readline
+loop execute ctx c
+
+
+type <Lambda.command> s
+
+
+s:
+    stringv eq term Eof
+        { bind ($1, $3) }
+    | term Eof
+        { Eval $1 }
+
+
+
+
+        tuplas y registros en la zona de atomic term y los campos son term
+        añadir a mayores 
+        record:
+        term o recordterm
+
+
+
+        enla funcion eval: añadir en no term applies qeu navegue el termino, y que cuando 
+        encuentre un tm var si no es una variable ligada que vaya al contexto y la sustituya por su valor.
+        meter en la lista de variables ligadas ( las que llevan punto Lx. ->esa x la meto)

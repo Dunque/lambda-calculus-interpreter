@@ -9,10 +9,6 @@ type ty =
   | TyPair of ty * ty
 ;;
 
-type context =
-  (string * ty) list
-;;
-
 type term =
     TmTrue
   | TmFalse
@@ -33,6 +29,12 @@ type term =
   | TmSecond of term
 ;;
 
+type command = 
+    Eval of term
+    | Bind of string * term
+
+type context = (string * (term * ty)) list
+;;
 
 (* CONTEXT MANAGEMENT *)
 
@@ -40,8 +42,8 @@ let emptyctx =
   []
 ;;
 
-let addbinding ctx x bind =
-  (x, bind) :: ctx
+let addbinding ctx x term bind =
+  (x, (term, bind)) :: ctx
 ;;
 
 let getbinding ctx x =
@@ -106,12 +108,12 @@ let rec typeof ctx tm = match tm with
 
     (* T-Var *)
   | TmVar x ->
-      (try getbinding ctx x with
-       _ -> raise (Type_error ("no binding type for variable " ^ x)))
+      (try snd (getbinding ctx x) with
+      Not_found -> raise (Type_error ("no binding type for variable " ^ x)))
 
     (* T-Abs *)
   | TmAbs (x, tyT1, t2) ->
-      let ctx' = addbinding ctx x tyT1 in
+      let ctx' = addbinding ctx x t2 tyT1 in
       let tyT2 = typeof ctx' t2 in
       TyArr (tyT1, tyT2)
 
@@ -128,7 +130,7 @@ let rec typeof ctx tm = match tm with
     (* T-Let *)
   | TmLetIn (x, t1, t2) ->
       let tyT1 = typeof ctx t1 in
-      let ctx' = addbinding ctx x tyT1 in
+      let ctx' = addbinding ctx x t1 tyT1 in
       typeof ctx' t2
 
     (* T-Fix *)
@@ -168,7 +170,6 @@ let rec typeof ctx tm = match tm with
           let tyT1 = typeof ctx t2 in
           tyT1
         | _ -> raise (Type_error "argument of second must be a tuple"))
-
 ;;
 
 
@@ -350,7 +351,7 @@ let rec isval tm = match tm with
 exception NoRuleApplies
 ;;
 
-let rec eval1 tm = match tm with
+let rec eval1 ctx tm = match tm with
     (* E-IfTrue *)
     TmIf (TmTrue, t2, _) ->
       t2
@@ -361,12 +362,12 @@ let rec eval1 tm = match tm with
 
     (* E-If *)
   | TmIf (t1, t2, t3) ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmIf (t1', t2, t3)
 
     (* E-Succ *)
   | TmSucc t1 ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmSucc t1'
 
     (* E-PredZero *)
@@ -379,7 +380,7 @@ let rec eval1 tm = match tm with
 
     (* E-Pred *)
   | TmPred t1 ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmPred t1'
 
     (* E-IszeroZero *)
@@ -392,7 +393,7 @@ let rec eval1 tm = match tm with
 
     (* E-Iszero *)
   | TmIsZero t1 ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmIsZero t1'
 
     (* E-AppAbs *)
@@ -401,12 +402,12 @@ let rec eval1 tm = match tm with
 
     (* E-App2: evaluate argument before applying function *)
   | TmApp (v1, t2) when isval v1 ->
-      let t2' = eval1 t2 in
+      let t2' = eval1 ctx t2 in
       TmApp (v1, t2')
 
     (* E-App1: evaluate function before argument *)
   | TmApp (t1, t2) ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmApp (t1', t2)
 
     (* E-LetV *)
@@ -415,7 +416,7 @@ let rec eval1 tm = match tm with
 
     (* E-Let *)
   | TmLetIn(x, t1, t2) ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmLetIn (x, t1', t2)
 
     (* E-FixBeta *)
@@ -424,42 +425,96 @@ let rec eval1 tm = match tm with
 
     (* E-Fix *)
   | TmFix t1 ->
-      let t1' = eval1 t1 in
+      let t1' = eval1 ctx t1 in
       TmFix t1'
 
   | TmConcat (t1,t2) ->
-      let t1' = eval1 t1 in
-      let t2' = eval1 t2 in
+      let t1' = eval1 ctx t1 in
+      let t2' = eval1 ctx t2 in
       TmStr ( string_of_term t1' ^ string_of_term t2')
   
   | TmPair (t1,t2) ->
-      let t1' = eval1 t1 in
-      let t2' = eval1 t2 in
+      let t1' = eval1 ctx t1 in
+      let t2' = eval1 ctx t2 in
       TmPair (t1',t2')
   
   | TmFirst t ->
       (match t with
         TmPair (t1,t2) ->
-          let t1' = eval1 t1 in
+          let t1' = eval1 ctx t1 in
           t1'
         | _ -> raise (Type_error "argument of second must be a tuple"))
 
   | TmSecond t ->
       (match t with
         TmPair (t1,t2) ->
-          let t2' = eval1 t2 in
+          let t2' = eval1 ctx t2 in
           t2'
           | _ -> raise (Type_error "argument of second must be a tuple"))
+  
+  | TmVar s -> 
+      fst (getbinding ctx s)
 
   | _ ->
       raise NoRuleApplies
 ;;
 
-let rec eval tm =
+let apply_ctx ctx tm =
+  let rec aux vl = function
+    | TmTrue -> 
+        TmTrue
+    | TmFalse ->
+        TmFalse
+    | TmIf (t1, t2, t3) ->
+        TmIf (aux vl t1,aux vl t2,aux vl t3)
+    | TmZero ->
+        TmZero
+    | TmSucc t ->
+        TmSucc (aux vl t)
+    | TmPred t ->
+        TmPred (aux vl t)
+    | TmIsZero t ->
+        TmIsZero (aux vl t)
+    | TmVar s ->
+        if List.mem s vl then TmVar s else (fst (getbinding ctx s))
+    | TmAbs (s, t, t1) ->
+        TmAbs (s, t, (aux (s::vl) t1))
+    | TmApp (t1, t2) ->
+        TmApp (aux vl t1,aux vl t2)
+    | TmLetIn (s, t1, t2) ->
+        TmLetIn (s, aux vl t1, (aux (s::vl) t2))
+    | TmFix t ->
+        TmFix (aux vl t)
+(*     | TmEq (s,t) ->
+        if List.mem s vl then (TmEq (s,t),ctx) else (fst (getbinding ctx s),ctx) *)
+(*     | TmStr s ->
+        
+    | TmConcat (t1, t2) -> 
+        [string_of_term t1 ^ string_of_term t2]
+    | TmPair (t1,t2) -> 
+        lunion (free_vars t1) (free_vars t2)
+    | TmFirst t ->
+        (match t with
+          TmPair (t1,t2) ->
+            free_vars t1
+          | _ -> raise (Type_error "argument of second must be a tuple"))
+    | TmSecond t ->
+        (match t with
+          TmPair (t1,t2) ->
+            free_vars t2
+          | _ -> raise (Type_error "argument of second must be a tuple"))
+    | TmEq (s,t) ->
+        free_vars t *)
+  in aux [] tm
+;;
+
+
+
+let rec eval ctx tm =
   try
-    let tm' = eval1 tm in
-    eval tm'
+    let tm' = eval1 ctx tm in
+    eval ctx tm'
   with
-    NoRuleApplies -> tm
+    NoRuleApplies -> apply_ctx ctx tm
 ;;
 

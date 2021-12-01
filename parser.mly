@@ -37,14 +37,16 @@
 %token <string> STRINGV
 
 %start s
-%type <Lambda.term> s
+%type <Lambda.command> s
 
 %%
 
-s :
-    term EOF
-      { $1 }
-
+s:
+    STRINGV EQ term EOF
+        { Bind ($1, $3) }
+    | term EOF
+        { Eval $1 }
+        
 term :
     appTerm
       { $1 }
@@ -56,14 +58,14 @@ term :
       { TmLetIn ($2, $4, $6) }
   | LETREC STRINGV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix ( TmAbs ($2, $4, $6)), $8) }
-  | CONCAT term term
-      { TmConcat ($2,$3) }
   | LCURL term COMMA term RCURL 
       { TmPair ($2,$4) }
   | term FIRST 
       { TmFirst ($1) }
   | term SECOND 
       { TmSecond ($1) }
+  | CONCAT term term
+      { TmConcat ($2,$3) }
 
 appTerm :
     atomicTerm
@@ -76,6 +78,8 @@ appTerm :
       { TmIsZero $2 }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
+  | CONCAT appTerm appTerm
+      { TmConcat ($2,$3) }
 
 atomicTerm :
     LPAREN term RPAREN

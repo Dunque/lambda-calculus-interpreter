@@ -7,10 +7,6 @@ type ty =
   | TyPair of ty * ty
 ;;
 
-type context =
-  (string * ty) list
-;;
-
 type term =
     TmTrue
   | TmFalse
@@ -31,9 +27,18 @@ type term =
   | TmSecond of term
 ;;
 
+type context = (string * (term * ty)) list
+;;
+
+type command = 
+    Eval of term
+    | Bind of string * term
+;;
+
 val emptyctx : context;;
-val addbinding : context -> string -> ty -> context;;
-val getbinding : context -> string -> ty;;
+val addbinding : context -> string -> term -> ty -> context;;
+val getbinding : context -> string -> (term * ty);;
+
 
 val string_of_ty : ty -> string;;
 exception Type_error of string;;
@@ -41,5 +46,5 @@ val typeof : context -> term -> ty;;
 
 val string_of_term : term -> string;;
 exception NoRuleApplies;;
-val eval : term -> term;;
+val eval : context -> term -> term;;
 

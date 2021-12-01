@@ -124,6 +124,43 @@ varaiables, para que traduzca de vuelta al final
 3.2 [*] elegir si se pueden squashear tipos o si no se puede hacer. si hacemos x = 5
 luego no podemos hacer x = true. elegimos si si o si no se puede hacer.
 
+    Our first approach was to change the eval function to carry the context, and also to return it in case it updates it. But this
+    method was too cumbersome, so we decided to scrap it and rethink for a bit. After a while, we decided to introduce a new type to the parser,
+    called command, so we changed the starting symbol and the first sentence to:
+
+    %type <Lambda.command> s
+
+    s:
+    STRINGV EQ term EOF
+        { Bind ($1, $3) }
+    | term EOF
+        { Eval $1 }
+
+    This ties into the new function that we use in our main file. In there, we match the type of command that the parser reads, as we now differeneciate
+    between regular type expressions, and binding expressions. For example: x = 5 is a binding command, and succ (succ (succ 0)) is a regular type expression.
+    We also changed the context type to (string * (term * ty)) list, as we now require it to store the name of the binding, the term that it stores and its type.
+    That also changes the getbinding and addbinding functions, that now require a term. Now getbinding returns a pair of (term * ty), so in order to access the
+    desired information, we make use of the fst and snd functions.
+    The eval function now needs the context, but it only makes use of it if the term is a TmVar, in which case it returns the term contained in the contexts that
+    matches the identifier string.
+
+    But this doesn't solve the problem of the variable squashing. For example, if we input 
+    x = 5;
+    id = L y:Nat.x;
+    the result we get is a syntax error, when it should be interpreted as id = L y:Nat.5;
+
+    So in order to fix this problem, we have to introduce a new function at the end of eval, changing NoRuleApplies -> tm to NoRuleApplies -> apply_ctx ctx tm,
+    where apply_ctx evaluates again the term tm, in order to find out if there are any sustitutions that can be made from bindings present in the context.
+    So now, when we do
+    x = 5;
+    id = L y:Nat.x;
+    it returns 
+    - : (Nat) -> (Nat) = (lambda y:Nat. 5)
+    showing us that it made the sustitution correctly. Now we can input 
+    id x;
+    and it returns 5.
+
+
 3.3 [*] [HECHO] nuevo tipo string
 
     creado como tipo base ty y a mayores añadida la operación de concat como TmConcat
