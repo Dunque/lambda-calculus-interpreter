@@ -5,6 +5,7 @@ type ty =
   | TyArr of ty * ty
   | TyStr
   | TyPair of ty * ty
+  | TyRecord of ty list
 ;;
 
 type term =
@@ -25,6 +26,7 @@ type term =
   | TmPair of term * term
   | TmFirst of term
   | TmSecond of term
+  | TmRecord of (string * term) list
 ;;
 
 type context = (string * (term * ty)) list

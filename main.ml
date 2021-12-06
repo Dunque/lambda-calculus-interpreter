@@ -9,6 +9,9 @@ open Lexer;;
 open String;;
 open List;;
 
+(*This function serves to distinguish the input from a regulat term or a variable binding.
+  If it matches a term, the structure it follows is the same as before, but if it matches 
+  a binding, in addition to evaluate it, it stores it in the context*)
 let execute ctx = function
     Eval tm ->
         let tyTm = typeof ctx tm in
@@ -88,7 +91,8 @@ let file_loop () =
   ;;
 ;;
   
-(*We changed the read_line funtion for our own read_input one.*)
+(*We changed the read_line funtion for our own read_input one. We also changed the evaluation, so now
+  the loop calls the execute function*)
 let top_level_loop () =
   print_endline "Evaluator of lambda expressions...";
   let rec loop ctx =

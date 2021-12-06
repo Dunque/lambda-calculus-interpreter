@@ -97,6 +97,14 @@ atomicTerm :
         in f $1 }
   | QUOTE STRINGV QUOTE 
       { TmStr $2 }
+  | LCURL recordTerm RCURL
+      { TmRecord $2 }
+
+recordTerm :
+    STRINGV EQ term
+      { [($1,$3)] }
+    | STRINGV EQ term COMMA recordTerm
+      { ($1,$3)::$5  }
 
 ty :
     atomicTy
