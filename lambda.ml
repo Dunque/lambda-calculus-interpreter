@@ -26,9 +26,10 @@ type term =
   | TmStr of string
   | TmConcat of term * term
   | TmPair of term * term
-  | TmFirst of term
-  | TmSecond of term
+  | TmFirst of term * term
+  | TmSecond of term * term
   | TmRecord of (string * term) list
+  | TmFindRecord of (string * term) list * string
 ;;
 
 type command = 
@@ -159,23 +160,17 @@ let rec typeof ctx tm = match tm with
         | _ -> raise (Type_error "arguments must be strings"))
 
   | TmPair (t1,t2) ->
-    let tyT1 = typeof ctx t1 in
-    let tyT2 = typeof ctx t2 in
+      let tyT1 = typeof ctx t1 in
+      let tyT2 = typeof ctx t2 in
       TyPair (tyT1,tyT2)
 
-  | TmFirst t ->
-      (match t with
-        TmPair (t1,t2) -> 
-          let tyT1 = typeof ctx t1 in
-          tyT1
-        | _ -> raise (Type_error "argument of first must be a tuple"))
+  | TmFirst (t1,t2) ->
+      let tyT1 = typeof ctx t1 in
+      tyT1
 
-  | TmSecond t ->
-      (match t with
-        TmPair (t1,t2) -> 
-          let tyT1 = typeof ctx t2 in
-          tyT1
-        | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond (t1,t2) ->
+      let tyT1 = typeof ctx t2 in
+      tyT1
 
   | TmRecord t ->
     let rec aux ty t =
@@ -183,6 +178,10 @@ let rec typeof ctx tm = match tm with
         (s,tm)::tail -> aux ((typeof ctx tm)::ty) tail
         | _ -> TyRecord (List.rev ty)
     in aux [] t
+
+  | TmFindRecord (t,str) ->
+      typeof ctx (List.assoc str t)
+  
 ;;
 
 
@@ -225,20 +224,16 @@ let rec string_of_term = function
       string_of_term t1 ^ string_of_term t2
   | TmPair (t1,t2) ->
     "{" ^ string_of_term t1 ^ "," ^ string_of_term t2 ^ "}"
-  | TmFirst t ->
-      (match t with
-        TmPair (t1,t2) -> 
-          string_of_term t1
-          | _ -> raise (Type_error "argument of second must be a tuple"))
-  | TmSecond t ->
-      (match t with
-        TmPair (t1,t2) -> 
-            string_of_term t2
-            | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmFirst (t1,t2) ->
+      string_of_term t1
+  | TmSecond (t1,t2) ->
+      string_of_term t2
   | TmRecord t ->
-    match t with
+    (match t with
       (s,tm)::tail -> string_of_term tm ^ "," ^ string_of_term (TmRecord tail)
-      | _ -> ""
+      | _ -> "")
+  | TmFindRecord (t,str) ->
+      string_of_term (List.assoc str t)
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -282,22 +277,18 @@ let rec free_vars tm = match tm with
       [string_of_term t1 ^ string_of_term t2]
   | TmPair (t1,t2) -> 
       lunion (free_vars t1) (free_vars t2)
-  | TmFirst t ->
-      (match t with
-        TmPair (t1,t2) ->
-          free_vars t1
-        | _ -> raise (Type_error "argument of second must be a tuple"))
-  | TmSecond t ->
-      (match t with
-        TmPair (t1,t2) ->
-          free_vars t2
-        | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmFirst (t1,t2) ->
+      free_vars t1
+  | TmSecond (t1,t2) ->
+      free_vars t2
   | TmRecord t ->
     let rec aux fv t =
       match t with
         (s,tm)::tail -> aux ((free_vars tm) @ fv) tail
         | _ -> (List.rev fv)
     in aux [] t
+  | TmFindRecord (t,str) ->
+      free_vars (List.assoc str t)
 ;;
 
 let rec fresh_name x l =
@@ -345,22 +336,18 @@ let rec subst x s tm = match tm with
       TmStr (string_of_term (subst x s t1) ^ string_of_term (subst x s t2))
   | TmPair (t1,t2) ->
       TmPair (subst x s t1, subst x s t2)
-  | TmFirst t ->
-      (match t with
-        TmPair (t1,t2) ->
-          subst x s t1
-          | _ -> raise (Type_error "argument of second must be a tuple"))
-  | TmSecond t ->
-      (match t with
-        TmPair (t1,t2) ->
-          subst x s t2
-          | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmFirst (t1,t2) ->
+      subst x s t1
+  | TmSecond (t1,t2) ->
+      subst x s t2
   | TmRecord t ->
     let rec aux sbs t =
       match t with
         (s1,tm)::tail -> aux ((s1,(subst x s tm))::sbs) tail
         | _ -> TmRecord (List.rev sbs)
     in aux [] t
+  | TmFindRecord (t,str) ->
+      subst x s (List.assoc str t)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -467,19 +454,13 @@ let rec eval1 ctx tm = match tm with
       let t2' = eval1 ctx t2 in
       TmPair (t1',t2')
   
-  | TmFirst t ->
-      (match t with
-        TmPair (t1,t2) ->
-          let t1' = eval1 ctx t1 in
-          t1'
-        | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmFirst (t1,t2) ->
+      let t1' = eval1 ctx t1 in
+      t1'
 
-  | TmSecond t ->
-      (match t with
-        TmPair (t1,t2) ->
-          let t2' = eval1 ctx t2 in
-          t2'
-          | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond (t1,t2) ->
+      let t2' = eval1 ctx t2 in
+      t2'
   
   | TmVar s -> 
       fst (getbinding ctx s)
@@ -490,6 +471,9 @@ let rec eval1 ctx tm = match tm with
         (s,tm)::tail -> aux ((s,(eval1 ctx tm))::ev) tail
         | _ -> TmRecord (List.rev ev)
     in aux [] t
+
+  | TmFindRecord (t,str) ->
+      eval1 ctx (List.assoc str t)
 
   | _ ->
       raise NoRuleApplies
@@ -527,22 +511,18 @@ let apply_ctx ctx tm =
         TmStr (string_of_term (aux vl t1) ^ string_of_term (aux vl t2))
     | TmPair (t1,t2) -> 
         TmPair (aux vl t1,aux vl t2)
-    | TmFirst t ->
-        (match t with
-          TmPair (t1,t2) ->
-            aux vl t1
-          | _ -> raise (Type_error "argument of second must be a tuple"))
-    | TmSecond t ->
-        (match t with
-          TmPair (t1,t2) ->
-            aux vl t2
-          | _ -> raise (Type_error "argument of second must be a tuple"))
+    | TmFirst (t1,t2) ->
+        aux vl t1
+    | TmSecond (t1,t2) ->
+        aux vl t2
     | TmRecord t ->
       let rec aux2 ac t =
         match t with
           (s,tm)::tail -> aux2 ((s,(aux vl tm))::ac) tail
           | _ -> TmRecord (List.rev ac)
       in aux2 [] t
+    | TmFindRecord (t,str) ->
+        aux vl (List.assoc str t)
   in aux [] tm
 ;;
 

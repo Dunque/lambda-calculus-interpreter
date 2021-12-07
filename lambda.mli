@@ -24,9 +24,10 @@ type term =
   | TmStr of string
   | TmConcat of term * term
   | TmPair of term * term
-  | TmFirst of term
-  | TmSecond of term
+  | TmFirst of term * term
+  | TmSecond of term * term
   | TmRecord of (string * term) list
+  | TmFindRecord of (string * term) list * string
 ;;
 
 type context = (string * (term * ty)) list

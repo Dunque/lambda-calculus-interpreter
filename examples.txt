@@ -17,7 +17,13 @@ let x = 5 in let id_nat = L x:Nat. x in id_nat x;
 let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y)) in let sumaux = lambda f. (lambda n. (lambda m. if (iszero n) then m else succ (f (pred n) m))) in let sum = fix sumaux in sum 21 34;
 let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y)) in let sumaux = lambda f. (lambda n. (lambda m. if (iszero n) then m else succ (f (pred n) m))) in let sum = fix sumaux in let prodaux = lambda f. (lambda n. (lambda m. if (iszero (pred n)) then m else sum (f (pred n) m) m)) in let prod = fix prodaux in prod 12 5;
 concat ({1,"adios"}.2) ({"hola",2}.1);
-{1=1,2="hola",3={1,2}}
+{edad=12,nombre="pepe",par={1,2}};
+
+{edad=12,nombre="pepe",par={1,2}}.edad;
+{edad=12,nombre="pepe",par={1,2}}.nombre;
+{edad=12,nombre="pepe",par={1,2}}.par;
+
+({{"hola",2},2}.1).1
 
 
 type context = string * ty * term option

@@ -58,12 +58,6 @@ term :
       { TmLetIn ($2, $4, $6) }
   | LETREC STRINGV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix ( TmAbs ($2, $4, $6)), $8) }
-  | LCURL term COMMA term RCURL 
-      { TmPair ($2,$4) }
-  | term FIRST 
-      { TmFirst ($1) }
-  | term SECOND 
-      { TmSecond ($1) }
   | CONCAT term term
       { TmConcat ($2,$3) }
 
@@ -99,12 +93,25 @@ atomicTerm :
       { TmStr $2 }
   | LCURL recordTerm RCURL
       { TmRecord $2 }
+  | LCURL recordTerm RCURL DOT STRINGV
+      { TmFindRecord ($2, $5) }
+  | pairTerm
+      { $1 }
 
+
+pairTerm :
+  | LCURL term COMMA term RCURL 
+      { TmPair ($2,$4) }
+  | LCURL term COMMA term RCURL FIRST
+      { TmFirst ($2,$4) }
+  | LCURL term COMMA term RCURL SECOND
+      { TmSecond ($2,$4) }
+      
 recordTerm :
     STRINGV EQ term
       { [($1,$3)] }
     | STRINGV EQ term COMMA recordTerm
-      { ($1,$3)::$5  }
+      { ($1,$3)::$5 }
 
 ty :
     atomicTy
