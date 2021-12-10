@@ -25,6 +25,11 @@ type token =
   | COMMA
   | LCURL
   | RCURL
+  | LSQR
+  | RSQR
+  | HEAD
+  | TAIL
+  | ISEMPTY
   | FIRST
   | SECOND
   | INTV of (int)

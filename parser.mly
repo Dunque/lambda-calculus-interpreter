@@ -30,6 +30,11 @@
 %token COMMA
 %token LCURL
 %token RCURL
+%token LSQR
+%token RSQR
+%token HEAD
+%token TAIL
+%token ISEMPTY
 %token FIRST
 %token SECOND
 
@@ -93,25 +98,41 @@ atomicTerm :
       { TmStr $2 }
   | LCURL recordTerm RCURL
       { TmRecord $2 }
-  | LCURL recordTerm RCURL DOT STRINGV
-      { TmFindRecord ($2, $5) }
   | pairTerm
       { $1 }
+  | LSQR listTerm RSQR
+      { TmList $2 }
+  | LSQR RSQR
+      { TmList [TmEmpty] }
+  | atomicTerm FIRST
+      { TmFirst $1 }
+  | atomicTerm SECOND
+      { TmSecond $1 }
+  | atomicTerm DOT STRINGV
+      { TmFindRecord ($1, $3) }
+  | HEAD atomicTerm
+      { TmHead $2 }
+  | TAIL atomicTerm
+      { TmTail $2 }
+  | ISEMPTY atomicTerm
+      { TmIsEmptyList $2 }
 
 
 pairTerm :
   | LCURL term COMMA term RCURL 
       { TmPair ($2,$4) }
-  | LCURL term COMMA term RCURL FIRST
-      { TmFirst ($2,$4) }
-  | LCURL term COMMA term RCURL SECOND
-      { TmSecond ($2,$4) }
       
 recordTerm :
     STRINGV EQ term
       { [($1,$3)] }
     | STRINGV EQ term COMMA recordTerm
       { ($1,$3)::$5 }
+
+listTerm :
+    term
+      { [$1] }
+    | term COMMA listTerm
+      { $1::$3 }
 
 ty :
     atomicTy

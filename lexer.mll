@@ -22,6 +22,9 @@ rule token = parse
   | "in"        { IN }
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
+  | "head"      { HEAD }
+  | "tail"      { TAIL }
+  | "isEmpty"   { ISEMPTY }
   | "\""        { QUOTE }
   | '('         { LPAREN }
   | ')'         { RPAREN }
@@ -32,6 +35,8 @@ rule token = parse
   | ","         { COMMA }
   | "{"         { LCURL }
   | "}"         { RCURL }
+  | "["         { LSQR }
+  | "]"         { RSQR }
   | ".1"        { FIRST }
   | ".2"        { SECOND }
   | ['0'-'9']+  { INTV (int_of_string (Lexing.lexeme lexbuf)) }

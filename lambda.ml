@@ -7,7 +7,9 @@ type ty =
   | TyArr of ty * ty
   | TyStr
   | TyPair of ty * ty
-  | TyRecord of ty list
+  | TyRecord of (string * ty) list
+  | TyList of ty
+  | TyEmpty
 ;;
 
 type term =
@@ -26,10 +28,15 @@ type term =
   | TmStr of string
   | TmConcat of term * term
   | TmPair of term * term
-  | TmFirst of term * term
-  | TmSecond of term * term
+  | TmFirst of term
+  | TmSecond of term
   | TmRecord of (string * term) list
-  | TmFindRecord of (string * term) list * string
+  | TmFindRecord of term * string
+  | TmList of term list
+  | TmEmpty
+  | TmHead of term
+  | TmTail of term
+  | TmIsEmptyList of term
 ;;
 
 type command = 
@@ -64,13 +71,21 @@ let rec string_of_ty ty = match ty with
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyStr ->
-    "String"
+      "String"
   | TyPair (ty1, ty2) ->
-    "{" ^ string_of_ty ty1 ^ "," ^ string_of_ty ty2 ^ "}"
+      "{" ^ string_of_ty ty1 ^ "," ^ string_of_ty ty2 ^ "}"
   | TyRecord t ->
-    match t with
-      tm::tail -> string_of_ty tm ^ "," ^ string_of_ty (TyRecord tail)
-     | _ -> ""
+      let rec aux str t =
+        match t with
+          (s,tm)::tail -> aux (str ^ s ^ ":" ^ string_of_ty tm ^ ",") tail
+        | _ -> 
+          let n = String.length str in
+          String.sub str 0 (n-1) ^ "}"
+      in aux "{" t
+  | TyList t ->
+      string_of_ty t ^ " List"
+  | TyEmpty ->
+      " List"
 ;;
 
 exception Type_error of string
@@ -164,26 +179,67 @@ let rec typeof ctx tm = match tm with
       let tyT2 = typeof ctx t2 in
       TyPair (tyT1,tyT2)
 
-  | TmFirst (t1,t2) ->
-      let tyT1 = typeof ctx t1 in
-      tyT1
+  | TmFirst t ->
+      let t' = typeof ctx t in
+      (match t' with
+        TyPair (tyT1,tyT2) -> 
+          tyT1
+        | _ -> raise (Type_error "argument of first must be a tuple typeof"))
 
-  | TmSecond (t1,t2) ->
-      let tyT1 = typeof ctx t2 in
-      tyT1
+  | TmSecond t ->
+      let t' = typeof ctx t in
+      (match t' with
+        TyPair (tyT1,tyT2) -> 
+          tyT2
+        | _ -> raise (Type_error "argument of second must be a tuple"))
 
   | TmRecord t ->
     let rec aux ty t =
       match t with
-        (s,tm)::tail -> aux ((typeof ctx tm)::ty) tail
+        (s,tm)::tail -> aux ((s,typeof ctx tm)::ty) tail
         | _ -> TyRecord (List.rev ty)
     in aux [] t
 
   | TmFindRecord (t,str) ->
-      typeof ctx (List.assoc str t)
+    let t' = typeof ctx t in
+      (match t' with
+        TyRecord t2 -> 
+          List.assoc str t2
+      | _ -> raise (Type_error "argument of second must be a tuple"))
+
+  | TmList t ->
+    let rec aux ty t =
+      match t with
+        tm::tail -> if (typeof ctx tm != ty) then raise (Type_error "all list items must be the same type")
+                    else aux ty tail
+        | _ -> TyList ty
+    in aux (typeof ctx (List.hd t)) t
+  
+  | TmEmpty ->
+    TyEmpty
+
+  | TmHead t ->
+    let t' = typeof ctx t in
+    (match t' with
+      TyList t2 -> 
+        t2
+    | _ -> raise (Type_error "argument of head must be a list"))
+
+  | TmTail t ->
+    let t' = typeof ctx t in
+    (match t' with
+      TyList t2 -> 
+        t2
+    | _ -> raise (Type_error "argument of tail must be a list"))
+
+  | TmIsEmptyList t ->
+    let t' = typeof ctx t in
+    (match t' with
+      TyList t2 -> 
+        TyBool
+      | _ -> raise (Type_error "argument of isEmptyList must be a list"))
   
 ;;
-
 
 (* TERMS MANAGEMENT (EVALUATION) *)
 
@@ -224,16 +280,56 @@ let rec string_of_term = function
       string_of_term t1 ^ string_of_term t2
   | TmPair (t1,t2) ->
     "{" ^ string_of_term t1 ^ "," ^ string_of_term t2 ^ "}"
-  | TmFirst (t1,t2) ->
-      string_of_term t1
-  | TmSecond (t1,t2) ->
-      string_of_term t2
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) -> 
+          string_of_term t1
+          | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) -> 
+            string_of_term t2
+            | _ -> raise (Type_error "argument of second must be a tuple"))
   | TmRecord t ->
-    (match t with
-      (s,tm)::tail -> string_of_term tm ^ "," ^ string_of_term (TmRecord tail)
-      | _ -> "")
+    let rec aux str t =
+      match t with
+        (s,tm)::tail -> aux (str ^ string_of_term tm ^ ",") tail
+      | _ -> 
+        let n = String.length str in
+        String.sub str 0 (n-1) ^ "}"
+    in aux "{" t
   | TmFindRecord (t,str) ->
-      string_of_term (List.assoc str t)
+      (match t with
+        TmRecord t2 -> 
+          string_of_term (List.assoc str t2)
+      | _ -> raise (Type_error "argument of proyection must be a record"))
+  | TmList t ->
+    let rec aux str t =
+      match t with
+        tm::tail -> aux (str ^ string_of_term tm ^ ",") tail
+      | _ -> 
+        let n = String.length str in
+        String.sub str 0 (n-1) ^ "]"
+    in aux "[" t
+  | TmEmpty ->
+    "Empty"
+  | TmHead t ->
+    (match t with
+      TmList t2 -> 
+        string_of_term (List.hd t2)
+    | _ -> raise (Type_error "argument of head must be a list"))
+  | TmTail t ->
+    (match t with
+      TmList t2 -> 
+        string_of_term (List.hd (List.rev t2))
+    | _ -> raise (Type_error "argument of tail must be a list"))
+  | TmIsEmptyList t ->
+    (match t with
+      TmList t2 -> 
+        (match t2 with
+          head::tail -> if head = TmEmpty then string_of_term TmTrue else string_of_term TmFalse
+          | _ -> raise (Type_error "argument of isEmptyList must be a list"))
+      | _ -> raise (Type_error "argument of isEmptyList must be a list"))
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -277,10 +373,16 @@ let rec free_vars tm = match tm with
       [string_of_term t1 ^ string_of_term t2]
   | TmPair (t1,t2) -> 
       lunion (free_vars t1) (free_vars t2)
-  | TmFirst (t1,t2) ->
-      free_vars t1
-  | TmSecond (t1,t2) ->
-      free_vars t2
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) ->
+          free_vars t1
+        | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) ->
+          free_vars t2
+        | _ -> raise (Type_error "argument of second must be a tuple"))
   | TmRecord t ->
     let rec aux fv t =
       match t with
@@ -288,7 +390,37 @@ let rec free_vars tm = match tm with
         | _ -> (List.rev fv)
     in aux [] t
   | TmFindRecord (t,str) ->
-      free_vars (List.assoc str t)
+    (match t with
+      TmRecord t2 -> 
+        free_vars (List.assoc str t2)
+    | _ -> raise (Type_error "argument of proyection must be a record"))
+  | TmList t ->
+    let rec aux fv t =
+      match t with
+        tm::tail -> aux ((free_vars tm) @ fv) tail
+        | _ -> (List.rev fv)
+    in aux [] t
+  | TmEmpty ->
+    []
+  | TmHead t ->
+    (match t with
+      TmList t2 -> 
+        free_vars (List.hd t2)
+    | _ -> raise (Type_error "argument of head must be a list"))
+
+  | TmTail t ->
+    (match t with
+      TmList t2 -> 
+        free_vars (List.hd (List.rev t2))
+    | _ -> raise (Type_error "argument of tail must be a list"))
+
+  | TmIsEmptyList t ->
+    (match t with
+      TmList t2 -> 
+        (match t2 with
+          head::tail -> if head = TmEmpty then free_vars TmTrue else free_vars TmFalse
+          | _ -> raise (Type_error "argument of isEmptyList must be a list"))
+      | _ -> raise (Type_error "argument of isEmptyList must be a list"))
 ;;
 
 let rec fresh_name x l =
@@ -336,10 +468,16 @@ let rec subst x s tm = match tm with
       TmStr (string_of_term (subst x s t1) ^ string_of_term (subst x s t2))
   | TmPair (t1,t2) ->
       TmPair (subst x s t1, subst x s t2)
-  | TmFirst (t1,t2) ->
-      subst x s t1
-  | TmSecond (t1,t2) ->
-      subst x s t2
+  | TmFirst t ->
+      (match t with
+        TmPair (t1,t2) ->
+          subst x s t1
+          | _ -> raise (Type_error "argument of second must be a tuple"))
+  | TmSecond t ->
+      (match t with
+        TmPair (t1,t2) ->
+          subst x s t2
+          | _ -> raise (Type_error "argument of second must be a tuple"))
   | TmRecord t ->
     let rec aux sbs t =
       match t with
@@ -347,8 +485,41 @@ let rec subst x s tm = match tm with
         | _ -> TmRecord (List.rev sbs)
     in aux [] t
   | TmFindRecord (t,str) ->
-      subst x s (List.assoc str t)
+    (match t with
+      TmRecord t2 -> 
+        subst x s (List.assoc str t2)
+    | _ -> raise (Type_error "argument of proyection must be a record"))
+
+  | TmList t ->
+    let rec aux sbs t =
+      match t with
+        tm::tail -> aux ((subst x s tm)::sbs) tail
+        | _ -> TmList (List.rev sbs)
+    in aux [] t
+  | TmEmpty ->
+      TmEmpty
+  | TmHead t ->
+    (match t with
+      TmList t2 -> 
+        subst x s (List.hd t2)
+    | _ -> raise (Type_error "argument of head must be a list"))
+
+  | TmTail t ->
+    (match t with
+      TmList t2 -> 
+        subst x s (List.hd (List.rev t2))
+    | _ -> raise (Type_error "argument of tail must be a list"))
+
+  | TmIsEmptyList t ->
+    (match t with
+      TmList t2 -> 
+        (match t2 with
+          head::tail -> if head = TmEmpty then subst x s TmTrue else subst x s TmFalse
+          | _ -> raise (Type_error "argument of isEmptyList must be a list"))
+      | _ -> raise (Type_error "argument of isEmptyList must be a list"))
 ;;
+;;
+
 
 let rec isnumericval tm = match tm with
     TmZero -> true
@@ -360,6 +531,7 @@ let rec isval tm = match tm with
     TmTrue  -> true
   | TmFalse -> true
   | TmAbs _ -> true
+  | TmStr _ -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -454,13 +626,21 @@ let rec eval1 ctx tm = match tm with
       let t2' = eval1 ctx t2 in
       TmPair (t1',t2')
   
-  | TmFirst (t1,t2) ->
-      let t1' = eval1 ctx t1 in
-      t1'
+  | TmFirst t ->
+      let t' = eval1 ctx t in
+      (match t' with
+        TmPair (t1,t2) -> 
+          let t1' = eval1 ctx t1 in
+          t1'
+        | _ -> raise (Type_error "argument of first must be a tuple"))
 
-  | TmSecond (t1,t2) ->
-      let t2' = eval1 ctx t2 in
-      t2'
+  | TmSecond t ->
+      let t' = eval1 ctx t in
+      (match t' with
+        TmPair (t1,t2) -> 
+          let t2' = eval1 ctx t2 in
+          t2'
+        | _ -> raise (Type_error "argument of second must be a tuple"))
   
   | TmVar s -> 
       fst (getbinding ctx s)
@@ -469,11 +649,45 @@ let rec eval1 ctx tm = match tm with
     let rec aux ev t =
       match t with
         (s,tm)::tail -> aux ((s,(eval1 ctx tm))::ev) tail
-        | _ -> TmRecord (List.rev ev)
+      | _ -> TmRecord (List.rev ev)
     in aux [] t
 
   | TmFindRecord (t,str) ->
-      eval1 ctx (List.assoc str t)
+    let t' = eval1 ctx t in
+    (match t' with
+      TmRecord t2 -> 
+        eval1 ctx (List.assoc str t2)
+      | _ -> raise (Type_error "argument of proyection must be a record"))
+
+  | TmList t ->
+    let rec aux ev t =
+      match t with
+        tm::tail -> aux ((eval1 ctx tm)::ev) tail
+        | _ -> TmList (List.rev ev)
+    in aux [] t
+
+  | TmHead t ->
+    let t' = eval1 ctx t in
+    (match t' with
+      TmList t2 -> 
+        eval1 ctx (List.hd t2)
+    | _ -> raise (Type_error "argument of head must be a list"))
+
+  | TmTail t ->
+    let t' = eval1 ctx t in
+    (match t' with
+      TmList t2 -> 
+        eval1 ctx (List.hd (List.rev t2))
+    | _ -> raise (Type_error "argument of tail must be a list"))
+
+  | TmIsEmptyList t ->
+    let t' = eval1 ctx t in
+    (match t' with
+      TmList t2 -> 
+        (match t2 with
+          head::tail -> if head = TmEmpty then TmTrue else TmFalse
+          | _ -> raise (Type_error "argument of isEmptyList must be a list"))
+      | _ -> raise (Type_error "argument of isEmptyList must be a list"))
 
   | _ ->
       raise NoRuleApplies
@@ -511,10 +725,18 @@ let apply_ctx ctx tm =
         TmStr (string_of_term (aux vl t1) ^ string_of_term (aux vl t2))
     | TmPair (t1,t2) -> 
         TmPair (aux vl t1,aux vl t2)
-    | TmFirst (t1,t2) ->
-        aux vl t1
-    | TmSecond (t1,t2) ->
-        aux vl t2
+    | TmFirst t ->
+      let t' = aux vl t in
+      (match t' with
+        TmPair (t1,t2) -> 
+          aux vl t1
+        | _ -> raise (Type_error "argument of first must be a tuple"))
+    | TmSecond t ->
+      let t' = aux vl t in
+      (match t' with
+        TmPair (t1,t2) -> 
+          aux vl t2
+        | _ -> raise (Type_error "argument of second must be a tuple"))
     | TmRecord t ->
       let rec aux2 ac t =
         match t with
@@ -522,7 +744,41 @@ let apply_ctx ctx tm =
           | _ -> TmRecord (List.rev ac)
       in aux2 [] t
     | TmFindRecord (t,str) ->
-        aux vl (List.assoc str t)
+      let t' = aux vl t in
+      (match t' with
+        TmRecord t2 -> 
+          aux vl (List.assoc str t2)
+        | _ -> raise (Type_error "argument of proyection must be a record"))
+    | TmList t ->
+      let rec aux2 ac t =
+        match t with
+          tm::tail -> aux2 ((aux vl tm)::ac) tail
+          | _ -> TmList (List.rev ac)
+      in aux2 [] t
+    | TmEmpty ->
+        TmEmpty
+    | TmHead t ->
+      let t' = aux vl t in
+      (match t' with
+        TmList t2 -> 
+          aux vl (List.hd t2)
+      | _ -> raise (Type_error "argument of head must be a list"))
+
+    | TmTail t ->
+      let t' = aux vl t in
+      (match t' with
+        TmList t2 -> 
+          aux vl (List.hd (List.rev t2))
+      | _ -> raise (Type_error "argument of tail must be a list"))
+
+    | TmIsEmptyList t ->
+      let t' = aux vl t in
+      (match t' with
+        TmList t2 -> 
+          (match t2 with
+            head::tail -> if head = TmEmpty then TmTrue else TmFalse
+            | _ -> raise (Type_error "argument of isEmptyList must be a list"))
+        | _ -> raise (Type_error "argument of isEmptyList must be a list"))
   in aux [] tm
 ;;
 

@@ -5,7 +5,9 @@ type ty =
   | TyArr of ty * ty
   | TyStr
   | TyPair of ty * ty
-  | TyRecord of ty list
+  | TyRecord of (string * ty) list
+  | TyList of ty
+  | TyEmpty
 ;;
 
 type term =
@@ -24,10 +26,15 @@ type term =
   | TmStr of string
   | TmConcat of term * term
   | TmPair of term * term
-  | TmFirst of term * term
-  | TmSecond of term * term
+  | TmFirst of term
+  | TmSecond of term
   | TmRecord of (string * term) list
-  | TmFindRecord of (string * term) list * string
+  | TmFindRecord of term * string
+  | TmList of term list
+  | TmEmpty
+  | TmHead of term
+  | TmTail of term
+  | TmIsEmptyList of term
 ;;
 
 type context = (string * (term * ty)) list
