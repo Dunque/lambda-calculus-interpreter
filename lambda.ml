@@ -539,23 +539,26 @@ let rec isval tm = match tm with
 exception NoRuleApplies
 ;;
 
-let rec eval1 ctx tm = match tm with
+let rec eval1 debug ctx tm = match tm with
     (* E-IfTrue *)
     TmIf (TmTrue, t2, _) ->
+      if debug == true then print_endline (string_of_term t2);
       t2
 
     (* E-IfFalse *)
   | TmIf (TmFalse, _, t3) ->
+      if debug == true then print_endline (string_of_term t3);
       t3
 
     (* E-If *)
   | TmIf (t1, t2, t3) ->
-      let t1' = eval1 ctx t1 in
+      if debug == true then print_endline (string_of_term t1 ^ " " ^ string_of_term t2 ^ " " ^ string_of_term t3);
+      let t1' = eval1 debug ctx t1 in
       TmIf (t1', t2, t3)
 
     (* E-Succ *)
   | TmSucc t1 ->
-      let t1' = eval1 ctx t1 in
+      let t1' = eval1 debug ctx t1 in
       TmSucc t1'
 
     (* E-PredZero *)
@@ -568,20 +571,23 @@ let rec eval1 ctx tm = match tm with
 
     (* E-Pred *)
   | TmPred t1 ->
-      let t1' = eval1 ctx t1 in
+      let t1' = eval1 debug ctx t1 in
       TmPred t1'
 
     (* E-IszeroZero *)
   | TmIsZero TmZero ->
+      if debug == true then print_endline (string_of_term TmTrue);
       TmTrue
 
     (* E-IszeroSucc *)
   | TmIsZero (TmSucc nv1) when isnumericval nv1 ->
+    if debug == true then print_endline (string_of_term TmFalse);
       TmFalse
 
     (* E-Iszero *)
   | TmIsZero t1 ->
-      let t1' = eval1 ctx t1 in
+    if debug == true then print_endline (string_of_term t1);
+      let t1' = eval1 debug ctx t1 in
       TmIsZero t1'
 
     (* E-AppAbs *)
@@ -590,12 +596,14 @@ let rec eval1 ctx tm = match tm with
 
     (* E-App2: evaluate argument before applying function *)
   | TmApp (v1, t2) when isval v1 ->
-      let t2' = eval1 ctx t2 in
+    if debug == true then print_endline (string_of_term v1 ^ " " ^ string_of_term t2);
+      let t2' = eval1 debug ctx t2 in
       TmApp (v1, t2')
 
     (* E-App1: evaluate function before argument *)
   | TmApp (t1, t2) ->
-      let t1' = eval1 ctx t1 in
+    if debug == true then print_endline (string_of_term t1 ^ " " ^ string_of_term t2);
+      let t1' = eval1 debug ctx t1 in
       TmApp (t1', t2)
 
     (* E-LetV *)
@@ -604,7 +612,8 @@ let rec eval1 ctx tm = match tm with
 
     (* E-Let *)
   | TmLetIn(x, t1, t2) ->
-      let t1' = eval1 ctx t1 in
+      if debug == true then print_endline ( x ^ " " ^ string_of_term t1 ^ " " ^ string_of_term t2);
+      let t1' = eval1 debug ctx t1 in
       TmLetIn (x, t1', t2)
 
     (* E-FixBeta *)
@@ -613,32 +622,39 @@ let rec eval1 ctx tm = match tm with
 
     (* E-Fix *)
   | TmFix t1 ->
-      let t1' = eval1 ctx t1 in
+      let t1' = eval1 debug ctx t1 in
       TmFix t1'
 
   | TmConcat (t1,t2) ->
-      let t1' = eval1 ctx t1 in
-      let t2' = eval1 ctx t2 in
+      if debug == true then print_endline ( string_of_term t1 ^ " " ^ string_of_term t2);
+      let t1' = eval1 debug ctx t1 in
+      let t2' = eval1 debug ctx t2 in
       TmStr ( string_of_term t1' ^ string_of_term t2')
   
   | TmPair (t1,t2) ->
-      let t1' = eval1 ctx t1 in
-      let t2' = eval1 ctx t2 in
+      if debug == true then print_endline ( string_of_term t1 ^ " " ^ string_of_term t2);
+      let t1' = eval1 debug ctx t1 in
+      let t2' = eval1 debug ctx t2 in
       TmPair (t1',t2')
   
   | TmFirst t ->
-      let t' = eval1 ctx t in
+      if debug == true then print_endline ( string_of_term t);
+      let t' = eval1 debug ctx t in
+      if debug == true then print_endline ( string_of_term t');
       (match t' with
         TmPair (t1,t2) -> 
-          let t1' = eval1 ctx t1 in
+          let t1' = eval1 debug ctx t1 in
+          if debug == true then print_endline ( string_of_term t1');
           t1'
         | _ -> raise (Type_error "argument of first must be a tuple"))
 
   | TmSecond t ->
-      let t' = eval1 ctx t in
+    if debug == true then print_endline ( string_of_term t);
+      let t' = eval1 debug ctx t in
       (match t' with
         TmPair (t1,t2) -> 
-          let t2' = eval1 ctx t2 in
+          let t2' = eval1 debug ctx t2 in
+          if debug == true then print_endline ( string_of_term t2');
           t2'
         | _ -> raise (Type_error "argument of second must be a tuple"))
   
@@ -648,40 +664,47 @@ let rec eval1 ctx tm = match tm with
   | TmRecord t ->
     let rec aux ev t =
       match t with
-        (s,tm)::tail -> aux ((s,(eval1 ctx tm))::ev) tail
-      | _ -> TmRecord (List.rev ev)
+        (s,tm)::tail -> aux ((s,(eval1 debug ctx tm))::ev) tail
+      | _ -> 
+        if debug == true then print_endline ( string_of_term (TmRecord (List.rev ev)));
+        TmRecord (List.rev ev)
     in aux [] t
 
   | TmFindRecord (t,str) ->
-    let t' = eval1 ctx t in
+    let t' = eval1 debug ctx t in
+    if debug == true then print_endline ( string_of_term t');
     (match t' with
       TmRecord t2 -> 
-        eval1 ctx (List.assoc str t2)
+        eval1 debug ctx (List.assoc str t2)
       | _ -> raise (Type_error "argument of proyection must be a record"))
 
   | TmList t ->
     let rec aux ev t =
       match t with
-        tm::tail -> aux ((eval1 ctx tm)::ev) tail
-        | _ -> TmList (List.rev ev)
+        tm::tail -> aux ((eval1 debug ctx tm)::ev) tail
+        | _ -> 
+          if debug == true then print_endline ( string_of_term (TmList (List.rev ev)));
+          TmList (List.rev ev)
     in aux [] t
 
   | TmHead t ->
-    let t' = eval1 ctx t in
+    let t' = eval1 debug ctx t in
     (match t' with
       TmList t2 -> 
-        eval1 ctx (List.hd t2)
+        if debug == true then print_endline ( string_of_term (List.hd t2));
+        eval1 debug ctx (List.hd t2)
     | _ -> raise (Type_error "argument of head must be a list"))
 
   | TmTail t ->
-    let t' = eval1 ctx t in
+    let t' = eval1 debug ctx t in
     (match t' with
       TmList t2 -> 
-        eval1 ctx (List.hd (List.rev t2))
+        if debug == true then print_endline ( string_of_term (List.hd (List.rev t2)));
+        eval1 debug ctx (List.hd (List.rev t2))
     | _ -> raise (Type_error "argument of tail must be a list"))
 
   | TmIsEmptyList t ->
-    let t' = eval1 ctx t in
+    let t' = eval1 debug ctx t in
     (match t' with
       TmList t2 -> 
         (match t2 with
@@ -784,10 +807,10 @@ let apply_ctx ctx tm =
 
 
 
-let rec eval ctx tm =
+let rec eval debug ctx tm =
   try
-    let tm' = eval1 ctx tm in
-    eval ctx tm'
+    let tm' = eval1 debug ctx tm in
+    eval debug ctx tm'
   with
     NoRuleApplies -> apply_ctx ctx tm
 ;;
