@@ -22,9 +22,12 @@ rule token = parse
   | "in"        { IN }
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
+  | "List"      { LIST }
   | "head"      { HEAD }
   | "tail"      { TAIL }
-  | "isEmpty"   { ISEMPTY }
+  | "nil"       { NIL }
+  | "isNil"     { ISNIL }
+  | "const"     { CONST }
   | "\""        { QUOTE }
   | '('         { LPAREN }
   | ')'         { RPAREN }

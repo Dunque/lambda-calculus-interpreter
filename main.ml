@@ -16,13 +16,13 @@ let execute debug ctx = function
     Eval tm ->
         let tyTm = typeof ctx tm in
         let tm' = eval debug ctx tm in
-        print_endline (" - : " ^ string_of_ty tyTm ^ " = " ^ string_of_term tm');
+        print_endline (" - : " ^ string_of_term tm' ^ ":" ^ string_of_ty tyTm);
         ctx
 
     | Bind (s, tm) ->
         let tyTm = typeof ctx tm in
         let tm' = eval debug ctx tm in
-        print_endline (" - : " ^ string_of_ty tyTm ^ " = " ^ string_of_term tm');
+        print_endline (" - : " ^ string_of_term tm' ^ ":" ^ string_of_ty tyTm);
         addbinding ctx s tm tyTm
 ;;
 

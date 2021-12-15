@@ -25,11 +25,14 @@ type token =
   | COMMA
   | LCURL
   | RCURL
+  | LIST
   | LSQR
   | RSQR
+  | CONST
+  | NIL
   | HEAD
   | TAIL
-  | ISEMPTY
+  | ISNIL
   | FIRST
   | SECOND
   | INTV of (int)

@@ -29,19 +29,25 @@ record dentro de un par
 ({{edad=12,nombre="pepe",par={1,2}},2}.1).edad;
 
 
+const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat];
+
 [];
 [1,2,3,4,5];
 [1,"hola",3];
 [true,false,true];
 {edad=12,nombre="pepe",lista=[1,2,3,4,5]}.lista;
+[[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]];
+[{1,2},{1,2},{1,2}];
+let p={1,2} in p.1;
 
 head [1,2,3,4,5];
 tail [1,2,3,4,5];
 isEmpty [1,2,3,4,5];
 isEmpty [];
 head ({edad=12,nombre="pepe",lista=[1,2,3,4,5]}.lista);
+tail ({edad=12,nombre="pepe",lista=[1,2,3,4,5]}.lista);
 
-
+L x:{Nat,Nat}. x.1;;
 
 ({{"hola",2},2}.1).1;
 ({{1,2},2}.1).1;
@@ -88,23 +94,8 @@ loop execute ctx c
 
 type <Lambda.command> s
 
+letrec length:Nat = (L l:List.(L n:Nat.(if (isEmpty l) then n else (length (tail l) (succ n)))))  
+in (length l 0);
 
-s:
-    stringv eq term Eof
-        { bind ($1, $3) }
-    | term Eof
-        { Eval $1 }
-
-
-
-
-        tuplas y registros en la zona de atomic term y los campos son term
-        añadir a mayores 
-        record:
-        term o recordterm
-
-
-
-        enla funcion eval: añadir en no term applies qeu navegue el termino, y que cuando 
-        encuentre un tm var si no es una variable ligada que vaya al contexto y la sustituya por su valor.
-        meter en la lista de variables ligadas ( las que llevan punto Lx. ->esa x la meto)
+letrec map = L f:Tm.(L l:TyList.(L l2:TyList.(if isEmptyList l then l2 else map f (tail l) (add (f (head l)) l2) )))
+in map f l [];

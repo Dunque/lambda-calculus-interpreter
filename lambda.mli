@@ -7,7 +7,7 @@ type ty =
   | TyPair of ty * ty
   | TyRecord of (string * ty) list
   | TyList of ty
-  | TyEmpty
+  | TyNil of ty
 ;;
 
 type term =
@@ -30,11 +30,11 @@ type term =
   | TmSecond of term
   | TmRecord of (string * term) list
   | TmFindRecord of term * string
-  | TmList of term list
-  | TmEmpty
-  | TmHead of term
-  | TmTail of term
-  | TmIsEmptyList of term
+  | TmConst of ty * term * term
+  | TmNil of ty
+  | TmHead of ty * term
+  | TmTail of ty * term
+  | TmIsNil of ty * term
 ;;
 
 type context = (string * (term * ty)) list

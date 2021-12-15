@@ -30,11 +30,16 @@
 %token COMMA
 %token LCURL
 %token RCURL
+
+%token LIST
 %token LSQR
 %token RSQR
+%token CONST
+%token NIL
 %token HEAD
 %token TAIL
-%token ISEMPTY
+%token ISNIL
+
 %token FIRST
 %token SECOND
 
@@ -100,22 +105,22 @@ atomicTerm :
       { TmRecord $2 }
   | pairTerm
       { $1 }
-  | LSQR listTerm RSQR
-      { TmList $2 }
-  | LSQR RSQR
-      { TmList [TmEmpty] }
   | atomicTerm FIRST
       { TmFirst $1 }
   | atomicTerm SECOND
       { TmSecond $1 }
   | atomicTerm DOT STRINGV
       { TmFindRecord ($1, $3) }
-  | HEAD atomicTerm
-      { TmHead $2 }
-  | TAIL atomicTerm
-      { TmTail $2 }
-  | ISEMPTY atomicTerm
-      { TmIsEmptyList $2 }
+  | CONST LSQR ty RSQR atomicTerm atomicTerm
+      { TmConst ($3,$5,$6) }
+  | NIL LSQR ty RSQR
+      { TmNil $3 }
+  | HEAD LSQR ty RSQR atomicTerm
+      { TmHead ($3,$5) }
+  | TAIL LSQR ty RSQR atomicTerm
+      { TmTail ($3,$5) }
+  | ISNIL LSQR ty RSQR atomicTerm
+      { TmIsNil ($3,$5) }
 
 
 pairTerm :
@@ -149,4 +154,21 @@ atomicTy :
       { TyNat }
   | STRINGV
       { TyStr }
+  | LCURL ty COMMA ty RCURL 
+      { TyPair ($2,$4) }
+  | LCURL recordTy RCURL
+      { TyRecord $2 }
+  | LIST ty
+      { TyList $2 }
+  | NIL ty
+      { TyNil $2 }
+/*   | LSQR ty RSQR
+      { TyList $2 }
+  | LSQR RSQR
+      { TyList TyEmpty } */
 
+recordTy :
+    STRINGV EQ ty
+      { [($1,$3)] }
+    | STRINGV EQ ty COMMA recordTy
+      { ($1,$3)::$5 }
