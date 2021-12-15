@@ -162,10 +162,6 @@ atomicTy :
       { TyList $2 }
   | NIL ty
       { TyNil $2 }
-/*   | LSQR ty RSQR
-      { TyList $2 }
-  | LSQR RSQR
-      { TyList TyEmpty } */
 
 recordTy :
     STRINGV EQ ty

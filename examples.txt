@@ -28,25 +28,28 @@ concat ({1,"adios"}.2) ({"hola",2}.1);
 record dentro de un par
 ({{edad=12,nombre="pepe",par={1,2}},2}.1).edad;
 
-
+-------------------------- LISTAS -----------------------------
+nil[Nat];
 const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat];
+const[Bool] false const[Bool] true const[Bool] true nil[Bool];
+{edad=12,nombre="pepe",lista=const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]}.lista;
 
-[];
-[1,2,3,4,5];
-[1,"hola",3];
-[true,false,true];
-{edad=12,nombre="pepe",lista=[1,2,3,4,5]}.lista;
-[[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]];
-[{1,2},{1,2},{1,2}];
-let p={1,2} in p.1;
+error de tipo
+    const[Nat] 3 const[Bool] true const[Nat] 1 nil[Nat];
 
-head [1,2,3,4,5];
-tail [1,2,3,4,5];
-isEmpty [1,2,3,4,5];
-isEmpty [];
-head ({edad=12,nombre="pepe",lista=[1,2,3,4,5]}.lista);
-tail ({edad=12,nombre="pepe",lista=[1,2,3,4,5]}.lista);
+const[List Nat] (const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]) const[List Nat] (const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]) nil[List Nat];
 
+const[{Nat,Nat}] {1,2} const[{Nat,Nat}] {1,2} const[{Nat,Nat}] {1,2} nil[{Nat,Nat}];
+
+let l=const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]; in head[Nat] l;
+
+head[Nat] (const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]);
+tail[Nat] (const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]);
+isNil[Nat] (const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]);
+isNil[Nat] nil[Nat];
+
+head[Nat] ({edad=12,nombre="pepe",lista=const[Nat] 3 const[Nat] 5 const[Nat] 1 nil[Nat]}.lista);
+-----------------------------------------------------------------------------
 L x:{Nat,Nat}. x.1;;
 
 ({{"hola",2},2}.1).1;

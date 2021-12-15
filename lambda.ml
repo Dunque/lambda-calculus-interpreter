@@ -60,6 +60,17 @@ let getbinding ctx x =
   List.assoc x ctx
 ;;
 
+let getTyOfList ty =
+  match ty with
+    | TyNil ty2 -> ty2
+    | TyList ty2 -> ty2
+    | TyBool -> TyBool
+    | TyNat -> TyNat
+    | TyArr(t1,t2) -> TyArr(t1,t2)
+    | TyStr -> TyStr
+    | TyPair(t1,t2) -> TyPair(t1,t2)
+    | TyRecord(t) -> TyRecord(t)
+
 
 (* TYPE MANAGEMENT (TYPING) *)
 
@@ -209,16 +220,13 @@ let rec typeof ctx tm = match tm with
 
   | TmConst (ty,t1,t2) ->
     let ty1 = typeof ctx t1 in 
-    if ty != ty1 then raise (Type_error "[Type_of error] all list elements must share the same type")
-    else
-      (match t2 with 
-        | TmNil (tyNil) -> if ty != tyNil then raise (Type_error "[Type_of error] all list elements must share the same type")
-                         else TyList ty
-        | TmConst (_,_,_) -> typeof ctx t2
-        | _ -> raise (Type_error "[Type_of error] argument of const must be either another const or nil"))
+    let ty2 = typeof ctx t2 in
+    if ((getTyOfList ty) != (getTyOfList ty1) || (getTyOfList ty1) != (getTyOfList ty2 )) 
+      then raise (Type_error "[Type_of error] all list elements must share the same type")
+    else TyList ty
   
   | TmNil ty ->
-    TyNil ty
+    TyList ty
 
   | TmHead (ty,t) ->
     let t' = typeof ctx t in
@@ -231,7 +239,7 @@ let rec typeof ctx tm = match tm with
     let t' = typeof ctx t in
     (match t' with
       TyList t2 -> 
-        ty
+        TyList ty
     | _ -> raise (Type_error "[Type_of error] argument of tail must be a list"))
 
   | TmIsNil (ty,t) ->
@@ -306,9 +314,9 @@ let rec string_of_term = function
           string_of_term (List.assoc str t2)
       | _ -> raise (Type_error "[String_of error] argument of proyection must be a record"))
   | TmConst (ty,t1,t2) ->
-    "Const["^ string_of_ty ty ^ "] " ^ string_of_term t1 ^ " " ^ string_of_term t2
+    "const["^ string_of_ty ty ^ "] " ^ string_of_term t1 ^ " " ^ string_of_term t2
   | TmNil ty ->
-    "Nil[" ^ string_of_ty ty ^ "]"
+    "nil[" ^ string_of_ty ty ^ "]"
   | TmHead (ty,t) ->
     (match t with
       TmConst (ty,t1,t2) -> 
@@ -676,8 +684,6 @@ let rec eval1 debug ctx tm = match tm with
   | TmConst (ty,t1,t2) ->
       TmConst (ty, eval1 debug ctx t1, eval1 debug ctx t2)
 
-  | TmNil ty ->
-      TmNil ty
 
   | TmHead (ty,t) ->
     let t' = eval1 debug ctx t in
