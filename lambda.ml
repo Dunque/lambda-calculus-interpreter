@@ -91,7 +91,7 @@ let rec string_of_ty ty = match ty with
           (s,tm)::tail -> aux (str ^ s ^ ":" ^ string_of_ty tm ^ ",") tail
         | _ -> 
           let n = String.length str in
-          String.sub str 0 (n-1) ^ "} Record"
+          String.sub str 0 (n-1) ^ "}"
       in aux "{" t
   | TyList t ->
       "List" ^ string_of_ty t
@@ -233,6 +233,8 @@ let rec typeof ctx tm = match tm with
     (match t' with
       TyList t2 -> 
         ty
+      | TyNil ty ->
+        ty
     | _ -> raise (Type_error "[Type_of error] argument of head must be a list"))
 
   | TmTail (ty,t) ->
@@ -240,12 +242,16 @@ let rec typeof ctx tm = match tm with
     (match t' with
       TyList t2 -> 
         TyList ty
+      | TyNil ty ->
+        TyList ty
     | _ -> raise (Type_error "[Type_of error] argument of tail must be a list"))
 
   | TmIsNil (ty,t) ->
     let t' = typeof ctx t in
     (match t' with
       TyNil t2 -> 
+        TyBool
+      | TyList t2 ->
         TyBool
       | _ -> raise (Type_error "[Type_of error] argument of isNil must be a list"))
   
@@ -321,11 +327,13 @@ let rec string_of_term = function
     (match t with
       TmConst (ty,t1,t2) -> 
         string_of_term t1
+      | TmNil ty -> "nil[" ^ string_of_ty ty ^ "]"
     | _ -> raise (Type_error "[String_of error] argument of head must be a list"))
   | TmTail (ty,t) ->
     (match t with
       TmConst (ty,t1,t2) -> 
         string_of_term t2
+      | TmNil ty -> "nil[" ^ string_of_ty ty ^ "]"
     | _ -> raise (Type_error "[String_of error] argument of tail must be a list"))
   | TmIsNil (ty,t) ->
     (match t with
@@ -404,12 +412,14 @@ let rec free_vars tm = match tm with
     (match t with
       TmConst (ty,t1,t2) -> 
         free_vars t1
+      | TmNil ty -> []
     | _ -> raise (Type_error "[Free_vars error] argument of head must be a list"))
 
   | TmTail (ty,t) ->
     (match t with
       TmConst (ty,t1,t2) -> 
         free_vars t2
+      | TmNil ty -> []
     | _ -> raise (Type_error "[Free_vars error] argument of tail must be a list"))
 
   | TmIsNil (ty,t) ->
@@ -500,6 +510,7 @@ let rec subst x s tm = match tm with
     (match t' with
       TmConst (ty,t1,t2) -> 
         subst x s t1
+      | TmNil ty -> TmNil ty
     | _ -> raise (Type_error "[Substitution error] argument of head must be a list"))
 
   | TmTail (ty,t) ->
@@ -507,6 +518,7 @@ let rec subst x s tm = match tm with
     (match t' with
       TmConst (ty,t1,t2) -> 
         subst x s t2
+      | TmNil ty -> TmNil ty
     | _ -> raise (Type_error "[Substitution error] argument of tail must be a list"))
 
   | TmIsNil (ty,t) ->
@@ -530,10 +542,10 @@ let rec isval tm = match tm with
   | TmFalse -> true
   | TmAbs _ -> true
   | TmStr _ -> true
-  | TmPair(_,_) -> true
-  | TmRecord(_) -> true
-  | TmConst(_,_,_) -> true
-  | TmNil(_) -> true
+  | TmPair _ -> true
+  | TmRecord _ -> true
+  | TmConst _ -> true
+  | TmNil _ -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -624,6 +636,7 @@ let rec eval1 debug ctx tm = match tm with
 
     (* E-Fix *)
   | TmFix t1 ->
+      if debug == true then print_endline ( string_of_term ( t1 ) );
       let t1' = eval1 debug ctx t1 in
       TmFix t1'
 
@@ -682,27 +695,32 @@ let rec eval1 debug ctx tm = match tm with
       | _ -> raise (Type_error "[Evaluation error] argument of proyection must be a record"))
 
   | TmConst (ty,t1,t2) ->
+    if debug == true then print_endline ( string_of_term (TmConst (ty, eval1 debug ctx t1, eval1 debug ctx t2)));
       TmConst (ty, eval1 debug ctx t1, eval1 debug ctx t2)
-
 
   | TmHead (ty,t) ->
     let t' = eval1 debug ctx t in
+    if debug == true then print_endline ( string_of_term t');
     (match t' with
       TmConst (ty,t1,t2) -> 
         if debug == true then print_endline ( string_of_term t1);
         eval1 debug ctx t1
+      | TmNil ty -> TmNil ty
     | _ -> raise (Type_error "[Evaluation error] argument of head must be a list"))
 
   | TmTail (ty,t) ->
     let t' = eval1 debug ctx t in
+    if debug == true then print_endline ( string_of_term t');
     (match t' with
       TmConst (ty,t1,t2) -> 
         if debug == true then print_endline ( string_of_term t2);
         eval1 debug ctx t2
+        | TmNil ty -> TmNil ty
     | _ -> raise (Type_error "[Evaluation error] argument of tail must be a list"))
 
   | TmIsNil (ty,t) ->
     let t' = eval1 debug ctx t in
+    if debug == true then print_endline ( string_of_term t');
     (match t' with
       TmConst (ty,t1,t2) -> TmFalse
       | TmNil ty -> TmTrue
@@ -780,6 +798,7 @@ let apply_ctx ctx tm =
       (match t' with
         TmConst (ty,t1,t2) -> 
           aux vl t1
+        | TmNil ty -> TmNil ty
       | _ -> raise (Type_error "[Apply_context error] argument of head must be a list"))
 
     | TmTail (ty,t) ->
@@ -787,6 +806,7 @@ let apply_ctx ctx tm =
       (match t' with
         TmConst (ty,t1,t2) -> 
           aux vl t2
+        | TmNil ty -> TmNil ty
       | _ -> raise (Type_error "[Apply_context error] argument of tail must be a list"))
 
     | TmIsNil (ty,t) ->

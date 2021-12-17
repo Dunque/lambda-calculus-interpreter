@@ -164,7 +164,7 @@ atomicTy :
       { TyNil $2 }
 
 recordTy :
-    STRINGV EQ ty
+    STRINGV COLON ty
       { [($1,$3)] }
-    | STRINGV EQ ty COMMA recordTy
+    | STRINGV COLON ty COMMA recordTy
       { ($1,$3)::$5 }
