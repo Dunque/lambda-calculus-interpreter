@@ -1,3 +1,7 @@
+(*
+Roi Santos Ríos
+Miguel Pérez Gómara
+*)
 
 type ty =
     TyBool
